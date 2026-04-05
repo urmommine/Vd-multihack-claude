@@ -370,7 +370,11 @@ function ESP.destroy(esp)
         esp.Offscreen:Remove(); esp.VelLine:Remove(); esp.VelArrow:Remove()
     end)
 end
-function ESP.hideAll() for _,esp in pairs(ESP.cache) do ESP.hide(esp) end end
+function ESP.hideAll()
+    for _,esp in pairs(ESP.cache) do ESP.hide(esp) end
+    for _,esp in pairs(ESP.objectCache) do ESP.hideObject(esp) end
+    Chams.ClearAll()
+end
 function ESP.cleanup()
     local valid = {}
     for _,p in ipairs(Players:GetPlayers()) do valid[p]=true end
@@ -1074,7 +1078,9 @@ local function RenderESP()
         local char=player.Character
         local isK=IsKiller(player); local isS=IsSurvivor(player)
         if not char or not ((isK and Config.ESP_Killer) or (isS and Config.ESP_Survivor)) then
-            if ESP.cache[player] then ESP.hide(ESP.cache[player]) end; continue
+            if ESP.cache[player] then ESP.hide(ESP.cache[player]) end
+            Chams.Remove(char)
+            continue
         end
         if Config.ESP_PlayerChams then
             local cd=isK and ChamsColors.Killer or ChamsColors.Survivor
@@ -1089,20 +1095,25 @@ local function RenderESP()
     end
     -- objects
     for _,obj in ipairs(Cache.Generators) do
+        local key=tostring(obj.model or obj.part)
         if Config.ESP_Generator and obj.part and obj.part.Parent then
             if Config.ESP_ObjectChams then
                 if not Chams.Objects[obj.model or obj.part] then Chams.Create(obj.model or obj.part,ChamsColors.Generator,"GEN") end
                 Chams.Update(obj.model or obj.part,"GEN",GetDistance(obj.part.Position))
+                if ESP.objectCache[key] then ESP.hideObject(ESP.objectCache[key]) end
             else
-                local key=tostring(obj.model or obj.part)
                 if not ESP.objectCache[key] then ESP.objectCache[key]=ESP.createObject(); ESP.setupObject(ESP.objectCache[key]) end
                 ESP.renderObject(ESP.objectCache[key],obj.part.Position,"GEN",Colors.Generator,cam)
                 Chams.Remove(obj.model or obj.part)
             end
-        else Chams.Remove(obj.model or obj.part) end
+        else
+            Chams.Remove(obj.model or obj.part)
+            if ESP.objectCache[key] then ESP.hideObject(ESP.objectCache[key]) end
+        end
     end
     for _,obj in ipairs(Cache.Hooks) do
         local target=obj.model or obj.part
+        local key=tostring(target)
         local isClosest=Config.ESP_ClosestHook and obj==Cache.ClosestHook
         if Config.ESP_Hook and obj.part and obj.part.Parent then
             local uc=isClosest and ChamsColors.HookClose or ChamsColors.Hook
@@ -1110,54 +1121,69 @@ local function RenderESP()
             if Config.ESP_ObjectChams then
                 if not Chams.Objects[target] then Chams.Create(target,uc,ul) else Chams.SetColor(target,uc) end
                 Chams.Update(target,ul,GetDistance(obj.part.Position))
+                if ESP.objectCache[key] then ESP.hideObject(ESP.objectCache[key]) end
             else
-                local key=tostring(target)
                 if not ESP.objectCache[key] then ESP.objectCache[key]=ESP.createObject(); ESP.setupObject(ESP.objectCache[key]) end
                 ESP.renderObject(ESP.objectCache[key],obj.part.Position,ul,isClosest and Colors.HookClose or Colors.Hook,cam)
                 Chams.Remove(target)
             end
-        else Chams.Remove(target) end
+        else
+            Chams.Remove(target)
+            if ESP.objectCache[key] then ESP.hideObject(ESP.objectCache[key]) end
+        end
     end
     for _,obj in ipairs(Cache.Pallets) do
         local target=obj.model or obj.part
+        local key=tostring(target)
         if Config.ESP_Pallet and obj.part and obj.part.Parent then
             if Config.ESP_ObjectChams then
                 if not Chams.Objects[target] then Chams.Create(target,ChamsColors.Pallet,"PALLET") end
                 Chams.Update(target,"PALLET",GetDistance(obj.part.Position))
+                if ESP.objectCache[key] then ESP.hideObject(ESP.objectCache[key]) end
             else
-                local key=tostring(target)
                 if not ESP.objectCache[key] then ESP.objectCache[key]=ESP.createObject(); ESP.setupObject(ESP.objectCache[key]) end
                 ESP.renderObject(ESP.objectCache[key],obj.part.Position,"PALLET",Colors.Pallet,cam)
                 Chams.Remove(target)
             end
-        else Chams.Remove(target) end
+        else
+            Chams.Remove(target)
+            if ESP.objectCache[key] then ESP.hideObject(ESP.objectCache[key]) end
+        end
     end
     for _,obj in ipairs(Cache.Windows) do
         local target=obj.model or obj.part
+        local key=tostring(target)
         if Config.ESP_Window and obj.part and obj.part.Parent then
             if Config.ESP_ObjectChams then
                 if not Chams.Objects[target] then Chams.Create(target,ChamsColors.Window,"WINDOW") end
                 Chams.Update(target,"WINDOW",GetDistance(obj.part.Position))
+                if ESP.objectCache[key] then ESP.hideObject(ESP.objectCache[key]) end
             else
-                local key=tostring(target)
                 if not ESP.objectCache[key] then ESP.objectCache[key]=ESP.createObject(); ESP.setupObject(ESP.objectCache[key]) end
                 ESP.renderObject(ESP.objectCache[key],obj.part.Position,"WINDOW",Colors.Window,cam)
                 Chams.Remove(target)
             end
-        else Chams.Remove(target) end
+        else
+            Chams.Remove(target)
+            if ESP.objectCache[key] then ESP.hideObject(ESP.objectCache[key]) end
+        end
     end
     for _,obj in ipairs(Cache.Gates) do
+        local key=tostring(obj.part)
         if Config.ESP_Gate and obj.part and obj.part.Parent then
             if Config.ESP_ObjectChams then
                 if not Chams.Objects[obj.part] then Chams.Create(obj.part,ChamsColors.Gate,"GATE") end
                 Chams.Update(obj.part,"GATE",GetDistance(obj.part.Position))
+                if ESP.objectCache[key] then ESP.hideObject(ESP.objectCache[key]) end
             else
-                local key=tostring(obj.part)
                 if not ESP.objectCache[key] then ESP.objectCache[key]=ESP.createObject(); ESP.setupObject(ESP.objectCache[key]) end
                 ESP.renderObject(ESP.objectCache[key],obj.part.Position,"GATE",Colors.Gate,cam)
                 Chams.Remove(obj.part)
             end
-        else Chams.Remove(obj.part) end
+        else
+            Chams.Remove(obj.part)
+            if ESP.objectCache[key] then ESP.hideObject(ESP.objectCache[key]) end
+        end
     end
 end
 
