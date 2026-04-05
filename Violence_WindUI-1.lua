@@ -48,6 +48,7 @@ local Config = {
     ESP_Names = true,
     ESP_Health = true,
     ESP_Skeleton = false,
+    ESP_Box = true,
     ESP_Offscreen = true,
     ESP_Velocity = false,
     ESP_ClosestHook = true,
@@ -476,10 +477,14 @@ function ESP.render(esp, player, char, cam, screenSize, screenCenter)
     local b = esp.Box
     local lt = Vector2.new(cx-hw, boxTop);    local rt = Vector2.new(cx+hw, boxTop)
     local lb = Vector2.new(cx-hw, boxBottom); local rb = Vector2.new(cx+hw, boxBottom)
-    b[1].From=lt; b[1].To=rt;   b[1].Color=col; b[1].Visible=true
-    b[2].From=rt; b[2].To=rb;   b[2].Color=col; b[2].Visible=true
-    b[3].From=rb; b[3].To=lb;   b[3].Color=col; b[3].Visible=true
-    b[4].From=lb; b[4].To=lt;   b[4].Color=col; b[4].Visible=true
+    if Config.ESP_Box then
+        b[1].From=lt; b[1].To=rt;   b[1].Color=col; b[1].Visible=true
+        b[2].From=rt; b[2].To=rb;   b[2].Color=col; b[2].Visible=true
+        b[3].From=rb; b[3].To=lb;   b[3].Color=col; b[3].Visible=true
+        b[4].From=lb; b[4].To=lt;   b[4].Color=col; b[4].Visible=true
+    else
+        b[1].Visible=false; b[2].Visible=false; b[3].Visible=false; b[4].Visible=false
+    end
 
     -- Name
     if Config.ESP_Names then
@@ -572,11 +577,15 @@ function ESP.renderObject(esp, pos, label, color, cam)
     if not onScreen then ESP.hideObject(esp); return end
     local w,h = 20,20
     local x,y = s.X,s.Y
-    esp.Box[1].From=Vector2.new(x-w,y-h); esp.Box[1].To=Vector2.new(x+w,y-h)
-    esp.Box[2].From=Vector2.new(x+w,y-h); esp.Box[2].To=Vector2.new(x+w,y+h)
-    esp.Box[3].From=Vector2.new(x+w,y+h); esp.Box[3].To=Vector2.new(x-w,y+h)
-    esp.Box[4].From=Vector2.new(x-w,y+h); esp.Box[4].To=Vector2.new(x-w,y-h)
-    for _,l in ipairs(esp.Box) do l.Color=color; l.Visible=true end
+    if Config.ESP_Box then
+        esp.Box[1].From=Vector2.new(x-w,y-h); esp.Box[1].To=Vector2.new(x+w,y-h)
+        esp.Box[2].From=Vector2.new(x+w,y-h); esp.Box[2].To=Vector2.new(x+w,y+h)
+        esp.Box[3].From=Vector2.new(x+w,y+h); esp.Box[3].To=Vector2.new(x-w,y+h)
+        esp.Box[4].From=Vector2.new(x-w,y+h); esp.Box[4].To=Vector2.new(x-w,y-h)
+        for _,l in ipairs(esp.Box) do l.Color=color; l.Visible=true end
+    else
+        for _,l in ipairs(esp.Box) do l.Visible=false end
+    end
     esp.Label.Text=label; esp.Label.Position=Vector2.new(x,y-h-14); esp.Label.Color=color; esp.Label.Visible=true
     local dist=GetDistance(pos)
     esp.Dist.Text=math.floor(dist).."m"; esp.Dist.Position=Vector2.new(x,y+h+2); esp.Dist.Visible=Config.ESP_Distance
@@ -1326,19 +1335,14 @@ local function MainLoop()
     UpdateShiftLock()
     UpdateCameraFOV()
     UpdateAimbot()
+    if Config.ESP_Enabled then RenderESP() else ESP.hideAll() end
+    UpdateRadar()
 end
 
--- ESP runs on its own throttled Heartbeat loop — not tied to framerate
+-- Cache and Raycasting runs on its own throttled Heartbeat loop
 local function ESPLoop()
     while not State.Unloaded do
         local now = tick()
-
-        -- ESP boxes: 20fps cap (0.05s) — enough for smooth visual, much less CPU
-        if now - State.LastESPUpdate >= 0.05 then
-            if Config.ESP_Enabled then RenderESP() else ESP.hideAll() end
-            UpdateRadar()
-            State.LastESPUpdate = now
-        end
 
         -- Visibility raycast: 10fps (0.1s) — raycasts are expensive
         if now - State.LastVisCheck >= 0.1 then
@@ -1427,6 +1431,7 @@ SecESPObj:Toggle({ Title="Window", Value=Config.ESP_Window, Callback=function(v)
 SecESPObj:Toggle({ Title="Object Chams", Desc="Highlight mode for objects", Value=Config.ESP_ObjectChams, Callback=function(v) Config.ESP_ObjectChams=v end })
 
 local SecESPDetail = TabESP:Section({ Title = "Details" })
+SecESPDetail:Toggle({ Title="ESP Box", Value=Config.ESP_Box, Callback=function(v) Config.ESP_Box=v end })
 SecESPDetail:Toggle({ Title="Names", Value=Config.ESP_Names, Callback=function(v) Config.ESP_Names=v end })
 SecESPDetail:Toggle({ Title="Distance", Value=Config.ESP_Distance, Callback=function(v) Config.ESP_Distance=v end })
 SecESPDetail:Toggle({ Title="Health Bar", Value=Config.ESP_Health, Callback=function(v) Config.ESP_Health=v end })
