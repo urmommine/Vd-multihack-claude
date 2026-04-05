@@ -42,18 +42,18 @@ local Config = {
     ESP_Generator = true,
     ESP_Gate = true,
     ESP_Hook = true,
-    ESP_Pallet = true,
+    ESP_Pallet = false,
     ESP_Window = false,
     ESP_Distance = true,
     ESP_Names = true,
     ESP_Health = true,
     ESP_Skeleton = false,
     ESP_Box = true,
-    ESP_Offscreen = true,
+    ESP_Offscreen = false,
     ESP_Velocity = false,
     ESP_ClosestHook = true,
     ESP_MaxDist = 500,
-    ESP_PlayerChams = false,
+    ESP_PlayerChams = true,
     ESP_ObjectChams = true,
 
     RADAR_Enabled = false,
@@ -1197,11 +1197,28 @@ local function RenderESP()
 end
 
 -- ─── Speed hack ──────────────────────────────────
+local _wasSpeedEnabled = false
 local function UpdateSpeed()
-    if not Config.SPEED_Enabled then return end
     local char=LocalPlayer.Character; if not char then return end
     local hum=char:FindFirstChildOfClass("Humanoid"); if not hum then return end
-    hum.WalkSpeed=Config.SPEED_Value
+    if Config.SPEED_Enabled then
+        if Config.SPEED_Method == "Attribute" then
+            hum.WalkSpeed = Config.SPEED_Value
+        elseif Config.SPEED_Method == "TP" then
+            hum.WalkSpeed = 16
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if root and hum.MoveDirection.Magnitude > 0 then
+                local extraSpeed = Config.SPEED_Value - 16
+                if extraSpeed > 0 then
+                    root.CFrame = root.CFrame + (hum.MoveDirection * (extraSpeed / 60))
+                end
+            end
+        end
+        _wasSpeedEnabled = true
+    elseif _wasSpeedEnabled then
+        hum.WalkSpeed = 16
+        _wasSpeedEnabled = false
+    end
 end
 
 -- ─── Noclip ──────────────────────────────────────
