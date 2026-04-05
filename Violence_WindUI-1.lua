@@ -690,14 +690,15 @@ end
 local function ScanMap()
     Cache.Generators={}; Cache.Gates={}; Cache.Hooks={}; Cache.Pallets={}; Cache.Windows={}
     local map = Workspace:FindFirstChild("Map")
-    if not map then return end
-    for _,obj in ipairs(map:GetDescendants()) do
+    local objectsToScan = map and map:GetDescendants() or Workspace:GetDescendants()
+    
+    for _,obj in ipairs(objectsToScan) do
         local n = obj.Name
         if obj:IsA("Model") then
-            if n=="Generator" then local p=obj:FindFirstChildWhichIsA("BasePart"); if p then table.insert(Cache.Generators,{model=obj,part=p}) end end
-            if n=="Hook" or n:find("Hook") then local p=obj:FindFirstChildWhichIsA("BasePart"); if p then table.insert(Cache.Hooks,{model=obj,part=p}) end end
-            if n=="Pallet" then local p=obj:FindFirstChildWhichIsA("BasePart"); if p then table.insert(Cache.Pallets,{model=obj,part=p}) end end
-            if n=="Window" or n:find("Window") then local p=obj:FindFirstChildWhichIsA("BasePart"); if p then table.insert(Cache.Windows,{model=obj,part=p}) end end
+            if n=="Generator" then local p=obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true); if p then table.insert(Cache.Generators,{model=obj,part=p}) end end
+            if n=="Hook" or n:find("Hook") then local p=obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true); if p then table.insert(Cache.Hooks,{model=obj,part=p}) end end
+            if n=="Pallet" then local p=obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true); if p then table.insert(Cache.Pallets,{model=obj,part=p}) end end
+            if n=="Window" or n:find("Window") then local p=obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true); if p then table.insert(Cache.Windows,{model=obj,part=p}) end end
         elseif obj:IsA("BasePart") then
             if n=="Gate" or n:find("ExitGate") or n:find("Gate") then table.insert(Cache.Gates,{part=obj}) end
         end
