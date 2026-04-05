@@ -108,6 +108,7 @@ local Config = {
     CAM_ShiftLock = false,
     FLING_Enabled = false,
     FLING_Strength = 10000,
+    TOUCH_Fling = false,
 
     BEAT_Survivor = false,
     BEAT_Killer = false,
@@ -794,6 +795,34 @@ local function FlingAll()
         end
     end
     root.CFrame=orig; root.Velocity=Vector3.zero; root.RotVelocity=Vector3.zero
+end
+
+local function StartTouchFling()
+    if not ReplicatedStorage:FindFirstChild("juisdfj0i32i0eidsuf0iok") then
+        local detection = Instance.new("Decal")
+        detection.Name = "juisdfj0i32i0eidsuf0iok"
+        detection.Parent = ReplicatedStorage
+    end
+    
+    local function doFling()
+        local c, hrp, vel, movel = nil, nil, nil, 0.1
+        while Config.TOUCH_Fling do
+            RunService.Heartbeat:Wait()
+            c = LocalPlayer.Character
+            hrp = c and c:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                vel = hrp.Velocity
+                hrp.Velocity = vel * 10000 + Vector3.new(0, 10000, 0)
+                RunService.RenderStepped:Wait()
+                hrp.Velocity = vel
+                RunService.Stepped:Wait()
+                hrp.Velocity = vel + Vector3.new(0, movel, 0)
+                movel = -movel
+            end
+        end
+    end
+    
+    coroutine.wrap(doFling)()
 end
 
 -- ─── Movement / Combat ───────────────────────────
@@ -1590,6 +1619,7 @@ SecFling:Toggle({ Title="Enable Fling", Value=Config.FLING_Enabled, Callback=fun
 SecFling:Slider({ Title="Fling Strength", Value={Min=1000,Max=50000,Default=Config.FLING_Strength}, Step=1000, Callback=function(v) Config.FLING_Strength=v end })
 SecFling:Button({ Title="Fling Nearest", Callback=function() FlingNearest(); Notif("Fling","Flinging nearest player",2) end })
 SecFling:Button({ Title="Fling All", Callback=function() FlingAll(); Notif("Fling","Flinging all players",2) end })
+SecFling:Toggle({ Title="Touch Fling", Desc="Walk into players to fling them", Value=Config.TOUCH_Fling, Callback=function(v) Config.TOUCH_Fling=v; if v then StartTouchFling(); Notif("Touch Fling","Enabled",2) else Notif("Touch Fling","Disabled",2) end end })
 
 local SecMenu = TabMisc:Section({ Title = "Menu" })
 SecMenu:Keybind({ Title="Toggle Menu Key", Value=tostring(Config.KEY_Menu):gsub("Enum.KeyCode.",""),
