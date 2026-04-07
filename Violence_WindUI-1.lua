@@ -205,7 +205,7 @@ local Bones_R6 = {
 local State = {
     Unloaded      = false,
     LastESPUpdate = 0, LastVisCheck = 0, LastGenUpdate = 0,
-    LastCacheUpdate = 0, LastTeleAway = 0,
+    LastCacheUpdate = 0, LastTeleAway = 0, LastScanUpdate = 0,
     AimTarget     = nil, AimHolding = false,
     OriginalSpeed = 16,  LastFogState = false,
     KillerTarget  = nil, LastBeatTP = 0,
@@ -690,17 +690,31 @@ end
 local function ScanMap()
     Cache.Generators={}; Cache.Gates={}; Cache.Hooks={}; Cache.Pallets={}; Cache.Windows={}
     local map = Workspace:FindFirstChild("Map")
-    local objectsToScan = map and map:GetDescendants() or Workspace:GetDescendants()
     
-    for _,obj in ipairs(objectsToScan) do
-        local n = obj.Name
-        if obj:IsA("Model") then
-            if n=="Generator" then local p=obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true); if p then table.insert(Cache.Generators,{model=obj,part=p}) end end
-            if n=="Hook" or n:find("Hook") then local p=obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true); if p then table.insert(Cache.Hooks,{model=obj,part=p}) end end
-            if n=="Pallet" then local p=obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true); if p then table.insert(Cache.Pallets,{model=obj,part=p}) end end
-            if n=="Window" or n:find("Window") then local p=obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true); if p then table.insert(Cache.Windows,{model=obj,part=p}) end end
-        elseif obj:IsA("BasePart") then
-            if n=="Gate" or n:find("ExitGate") or n:find("Gate") then table.insert(Cache.Gates,{part=obj}) end
+    local objectsToScan = map and map:GetDescendants() or Workspace:GetChildren()
+    
+    for _, obj in ipairs(objectsToScan) do
+        if obj:IsA("Model") or obj:IsA("BasePart") then
+            local n = obj.Name
+            if obj:IsA("Model") then
+                if n=="Generator" then 
+                    local p=obj.PrimaryPart or obj:FindFirstChild("GeneratorPoint") or obj:FindFirstChildWhichIsA("BasePart")
+                    if p then table.insert(Cache.Generators,{model=obj,part=p}) end 
+                elseif n=="Hook" or n:find("Hook") then 
+                    local p=obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+                    if p then table.insert(Cache.Hooks,{model=obj,part=p}) end 
+                elseif n=="Pallet" then 
+                    local p=obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+                    if p then table.insert(Cache.Pallets,{model=obj,part=p}) end 
+                elseif n=="Window" or n:find("Window") then 
+                    local p=obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+                    if p then table.insert(Cache.Windows,{model=obj,part=p}) end 
+                end
+            elseif obj:IsA("BasePart") then
+                if n=="Gate" or n:find("ExitGate") or n:find("Gate") then 
+                    table.insert(Cache.Gates,{part=obj}) 
+                end
+            end
         end
     end
 end
@@ -1046,11 +1060,12 @@ local function GetAimTarget()
             if targetPart then
                 local hum=player.Character:FindFirstChildOfClass("Humanoid")
                 if hum and hum.Health>0 then
-                    if Config.AIM_VisCheck and not Cache.Visibility[player] then continue end
-                    local s,on=WorldToScreen(targetPart.Position)
-                    if on then
-                        local d=(s-screenCenter).Magnitude
-                        if d<Config.AIM_FOV/2 and d<closestDist then closestDist=d; closest={player=player,part=targetPart} end
+                    if not (Config.AIM_VisCheck and not Cache.Visibility[player]) then
+                        local s,on=WorldToScreen(targetPart.Position)
+                        if on then
+                            local d=(s-screenCenter).Magnitude
+                            if d<Config.AIM_FOV/2 and d<closestDist then closestDist=d; closest={player=player,part=targetPart} end
+                        end
                     end
                 end
             end
@@ -1137,23 +1152,24 @@ local function RenderESP()
     local screenSize=cam.ViewportSize; local screenCenter=Vector2.new(screenSize.X/2,screenSize.Y/2)
     -- players
     for _,player in ipairs(Players:GetPlayers()) do
-        if player==LocalPlayer then continue end
-        local char=player.Character
-        local isK=IsKiller(player); local isS=IsSurvivor(player)
-        if not char or not ((isK and Config.ESP_Killer) or (isS and Config.ESP_Survivor)) then
-            if ESP.cache[player] then ESP.hide(ESP.cache[player]) end
-            Chams.Remove(char)
-            continue
-        end
-        if Config.ESP_PlayerChams then
-            local cd=isK and ChamsColors.Killer or ChamsColors.Survivor
-            if not Chams.Objects[char] then Chams.Create(char,cd,player.Name) else Chams.SetColor(char,cd) end
-            Chams.Update(char,player.Name)
-            if ESP.cache[player] then ESP.hide(ESP.cache[player]) end
-        else
-            Chams.Remove(char)
-            if not ESP.cache[player] then ESP.cache[player]=ESP.create(); ESP.setup(ESP.cache[player]) end
-            ESP.render(ESP.cache[player],player,char,cam,screenSize,screenCenter)
+        if player~=LocalPlayer then
+            local char=player.Character
+            local isK=IsKiller(player); local isS=IsSurvivor(player)
+            if char and ((isK and Config.ESP_Killer) or (isS and Config.ESP_Survivor)) then
+                if Config.ESP_PlayerChams then
+                    local cd=isK and ChamsColors.Killer or ChamsColors.Survivor
+                    if not Chams.Objects[char] then Chams.Create(char,cd,player.Name) else Chams.SetColor(char,cd) end
+                    Chams.Update(char,player.Name)
+                    if ESP.cache[player] then ESP.hide(ESP.cache[player]) end
+                else
+                    Chams.Remove(char)
+                    if not ESP.cache[player] then ESP.cache[player]=ESP.create(); ESP.setup(ESP.cache[player]) end
+                    ESP.render(ESP.cache[player],player,char,cam,screenSize,screenCenter)
+                end
+            else
+                if ESP.cache[player] then ESP.hide(ESP.cache[player]) end
+                Chams.Remove(char)
+            end
         end
     end
     -- objects
@@ -1433,6 +1449,11 @@ local function ESPLoop()
         end
 
         -- Cache/cleanup: 1fps (1.0s)
+        if now - State.LastScanUpdate >= 5.0 then
+            ScanMap()
+            State.LastScanUpdate = now
+        end
+        
         if now - State.LastCacheUpdate >= 1.0 then
             UpdateClosestHook()
             ESP.cleanup()
