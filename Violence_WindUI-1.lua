@@ -1000,7 +1000,31 @@ local function SetupSkillCheckMonitor()
             local r=ReplicatedStorage:FindFirstChild("Remotes"); if not r then return end
             local grem=r:FindFirstChild("Generator"); if not grem then return end
             local sc=grem:FindFirstChild("SkillCheckResultEvent"); if not sc then return end
-            sc:FireServer("success",1,nil,nil)
+            
+            -- Find nearest generator and its repair point
+            local root = GetCharacterRoot()
+            if not root then return end
+            
+            local closestGen, closestPoint = nil, nil
+            local minDist = 12
+            
+            for _, gen in ipairs(Cache.Generators) do
+                if gen.part and (gen.part.Position - root.Position).Magnitude < minDist then
+                    closestGen = gen.model or gen.part
+                    -- Look for a repair point child
+                    for _, child in ipairs(gen.model:GetChildren()) do
+                        if child.Name:find("Point") then
+                            closestPoint = child
+                            break
+                        end
+                    end
+                    if closestGen then break end
+                end
+            end
+            
+            if closestGen then
+                sc:FireServer("success", 1, closestGen, closestPoint)
+            end
         end)
     end)
 end
@@ -1234,6 +1258,12 @@ local function UpdateSpeed()
     if Config.SPEED_Enabled then
         if Config.SPEED_Method == "Attribute" then
             hum.WalkSpeed = Config.SPEED_Value
+            -- Also set attributes for bypass
+            pcall(function()
+                hum:SetAttribute("WalkSpeed", Config.SPEED_Value)
+                hum:SetAttribute("Speed", Config.SPEED_Value)
+                char:SetAttribute("WalkSpeed", Config.SPEED_Value)
+            end)
         elseif Config.SPEED_Method == "TP" then
             hum.WalkSpeed = 16
             local root = char:FindFirstChild("HumanoidRootPart")
@@ -1247,6 +1277,11 @@ local function UpdateSpeed()
         _wasSpeedEnabled = true
     elseif _wasSpeedEnabled then
         hum.WalkSpeed = 16
+        pcall(function()
+            hum:SetAttribute("WalkSpeed", 16)
+            hum:SetAttribute("Speed", 16)
+            char:SetAttribute("WalkSpeed", 16)
+        end)
         _wasSpeedEnabled = false
     end
 end
