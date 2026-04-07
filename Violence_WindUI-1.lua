@@ -875,12 +875,12 @@ local function UpdateFly()
         if not FlyBodyVelocity then FlyBodyVelocity=Instance.new("BodyVelocity"); FlyBodyVelocity.MaxForce=Vector3.new(math.huge,math.huge,math.huge); FlyBodyVelocity.Velocity=Vector3.zero; FlyBodyVelocity.Parent=root end
         if not FlyBodyGyro then FlyBodyGyro=Instance.new("BodyGyro"); FlyBodyGyro.MaxTorque=Vector3.new(math.huge,math.huge,math.huge); FlyBodyGyro.P=9e4; FlyBodyGyro.Parent=root end
         local cam=workspace.CurrentCamera; local dir=Vector3.zero
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir+=cam.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir-=cam.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir-=cam.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir+=cam.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir+=Vector3.new(0,1,0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then dir-=Vector3.new(0,1,0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then dir = dir - Vector3.new(0, 1, 0) end
         if dir.Magnitude>0 then dir=dir.Unit*Config.FLY_Speed end
         if Config.FLY_Method=="Velocity" then FlyBodyVelocity.Velocity=dir
         else FlyBodyVelocity.Velocity=Vector3.zero; if dir.Magnitude>0 then root.CFrame=root.CFrame+dir*0.05 end end
@@ -1578,7 +1578,18 @@ SecSpear:Slider({ Title="Spear Speed", Value={Min=50,Max=300,Default=Config.SPEA
 local TabSurv = Window:Tab({ Title = "Survivor", Icon = "user" })
 
 local SecGen = TabSurv:Section({ Title = "Generators" })
-SecGen:Toggle({ Title="Auto Generator", Value=Config.AUTO_Generator, Callback=function(v) Config.AUTO_Generator=v; if v then Notif("Violence","Auto Generator ON!",3) end end })
+SecGen:Toggle({ Title = "Auto Generator", Value = Config.AUTO_Generator, Callback = function(v) 
+    Config.AUTO_Generator = v
+    if v then 
+        Notif("Violence", "Auto Generator ON!", 3) 
+    else
+        Notif("Violence", "Auto Generator OFF!", 2)
+    end 
+end })
+SecGen:Button({ Title = "CANCEL REPAIR", Desc = "Stop and free movement (Mobile)", Callback = function() 
+    Config.AUTO_Generator = false 
+    Notif("Violence", "Auto Gen Cancelled!", 2)
+end })
 SecGen:Dropdown({ Title="Gen Speed", Values={"Fast","Slow"}, Value=Config.AUTO_GenMode, Callback=function(v) Config.AUTO_GenMode=v end })
 SecGen:Slider({ Title="Leave Distance", Value={Min=10,Max=30,Default=Config.AUTO_LeaveDist}, Step=2, Callback=function(v) Config.AUTO_LeaveDist=v end })
 SecGen:Keybind({ Title="Leave Gen Key", Value=tostring(Config.KEY_LeaveGen):gsub("Enum.KeyCode.",""), Callback=function(v) pcall(function() Config.KEY_LeaveGen=Enum.KeyCode[v] end) end })
@@ -1793,35 +1804,68 @@ task.spawn(AutoLoop)
 
 -- Auto-gen background loop
 task.spawn(function()
-    local repairRemote,skillRemote
-    local lastScan=0; local genPoints={}
+    local repairRemote, skillRemote
+    local lastScan = 0; local genPoints = {}
+    local isCurrentlyRepairing = false
+
+    local function stopRepairing()
+        if not isCurrentlyRepairing then return end
+        if repairRemote then
+            for _, data in ipairs(genPoints) do
+                pcall(repairRemote.FireServer, repairRemote, data.pt, false)
+            end
+        end
+        isCurrentlyRepairing = false
+    end
+
     while not State.Unloaded do
         if Config.AUTO_Generator then
-            if not repairRemote then
-                local r=ReplicatedStorage:FindFirstChild("Remotes"); local g=r and r:FindFirstChild("Generator")
-                repairRemote=g and g:FindFirstChild("RepairEvent"); skillRemote=g and g:FindFirstChild("SkillCheckResultEvent")
-            end
-            if tick()-lastScan>2 then
-                genPoints={}
-                local m=Workspace:FindFirstChild("Map")
-                if m then
-                    for _,v in ipairs(m:GetDescendants()) do
-                        if v:IsA("Model") and v.Name=="Generator" then
-                            for _,c in ipairs(v:GetChildren()) do
-                                if c.Name:match("GeneratorPoint") then table.insert(genPoints,{gen=v,pt=c}) end
+            -- Movement Check (Release if joystick/keyboard used)
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local isMoving = hum and hum.MoveDirection.Magnitude > 0
+            
+            -- Killer Proximity Check (40 studs)
+            local killerDist = 1000
+            pcall(function()
+                local d, _ = GetKillerDistance()
+                if d then killerDist = d end
+            end)
+
+            if isMoving or killerDist < 40 then
+                stopRepairing()
+                task.wait(0.2)
+            else
+                -- Normal Repair Logic
+                if not repairRemote then
+                    local r = ReplicatedStorage:FindFirstChild("Remotes"); local g = r and r:FindFirstChild("Generator")
+                    repairRemote = g and g:FindFirstChild("RepairEvent"); skillRemote = g and g:FindFirstChild("SkillCheckResultEvent")
+                end
+                if tick() - lastScan > 2 then
+                    genPoints = {}
+                    local m = Workspace:FindFirstChild("Map")
+                    if m then
+                        for _, v in ipairs(m:GetDescendants()) do
+                            if v:IsA("Model") and v.Name == "Generator" then
+                                for _, c in ipairs(v:GetChildren()) do
+                                    if c.Name:match("GeneratorPoint") then table.insert(genPoints, {gen = v, pt = c}) end
+                                end
                             end
                         end
                     end
+                    lastScan = tick()
                 end
-                lastScan=tick()
-            end
-            if repairRemote and skillRemote then
-                local mode=Config.AUTO_GenMode=="Fast"
-                for _,data in ipairs(genPoints) do
-                    pcall(repairRemote.FireServer,repairRemote,data.pt,true)
-                    pcall(skillRemote.FireServer,skillRemote,mode and "success" or "neutral",mode and 1 or 0,data.gen,data.pt)
+                if repairRemote and skillRemote then
+                    isCurrentlyRepairing = true
+                    local mode = Config.AUTO_GenMode == "Fast"
+                    for _, data in ipairs(genPoints) do
+                        pcall(repairRemote.FireServer, repairRemote, data.pt, true)
+                        pcall(skillRemote.FireServer, skillRemote, mode and "success" or "neutral", mode and 1 or 0, data.gen, data.pt)
+                    end
                 end
             end
+        else
+            stopRepairing()
         end
         task.wait(0.15)
     end
