@@ -2692,17 +2692,17 @@ local Window = WindUI:CreateWindow({
 })
 
 local Tabs = {
-    Main = Window:CreateTab({ Name = "Main", Icon = "rbxassetid://10723350257" }),
-    Combat = Window:CreateTab({ Name = "Combat", Icon = "rbxassetid://10709795175" }),
-    Visuals = Window:CreateTab({ Name = "Visuals", Icon = "rbxassetid://10709794142" }),
-    Movement = Window:CreateTab({ Name = "Movement", Icon = "rbxassetid://10709793134" }),
-    Settings = Window:CreateTab({ Name = "Settings", Icon = "rbxassetid://10709792031" })
+    Main = Window:Tab({ Title = "Main", Icon = "home" }),
+    Combat = Window:Tab({ Title = "Combat", Icon = "swords" }),
+    Visuals = Window:Tab({ Title = "Visuals", Icon = "eye" }),
+    Movement = Window:Tab({ Title = "Movement", Icon = "zap" }),
+    Settings = Window:Tab({ Title = "Settings", Icon = "settings" })
 }
 
 -- [[ Main Tab ]]
-Tabs.Main:CreateSection("Panic & Clean")
+local MainSec = Tabs.Main:Section({ Title = "Panic & Clean" })
 
-Tabs.Main:CreateButton({
+MainSec:Button({
     Title = "Panic (Unload)",
     Desc = "Completely unloads the script and removes UI",
     Callback = function()
@@ -2715,16 +2715,16 @@ Tabs.Main:CreateButton({
     end
 })
 
-Tabs.Main:CreateSection("Generator Automation")
+local GenSec = Tabs.Main:Section({ Title = "Generator Automation" })
 
-Tabs.Main:CreateToggle({
+GenSec:Toggle({
     Title = "Auto Generator",
     Desc = "Automatically repairs nearby generators",
     Value = Config.AUTO_Generator,
     Callback = function(v) Config.AUTO_Generator = v end
 })
 
-Tabs.Main:CreateDropdown({
+GenSec:Dropdown({
     Title = "Gen Speed",
     Desc = "Fast mode might be risky",
     Options = {"Fast", "Slow"},
@@ -2732,145 +2732,120 @@ Tabs.Main:CreateDropdown({
     Callback = function(v) Config.AUTO_GenMode = v end
 })
 
-Tabs.Main:CreateToggle({
+GenSec:Toggle({
     Title = "Perfect Skill Checks",
     Desc = "Auto-hits skill checks",
     Value = Config.AUTO_SkillCheck,
     Callback = function(v) Config.AUTO_SkillCheck = v end
 })
 
-Tabs.Main:CreateToggle({
-    Title = "Auto Return",
-    Desc = "Returns to gen after killer leaves",
-    Value = Config.AUTO_Generator, -- Mapping to existing logic
-    Callback = function(v) Config.AUTO_Generator = v end
-})
-
 -- [[ Visuals Tab ]]
-Tabs.Visuals:CreateSection("ESP Settings")
+local ESPSec = Tabs.Visuals:Section({ Title = "ESP Settings" })
 
-Tabs.Visuals:CreateToggle({
+ESPSec:Toggle({
     Title = "Survivors",
     Desc = "Show survivors",
-    Value = Config.ESP_Players,
-    Callback = function(v) Config.ESP_Players = v end
+    Value = Config.ESP_Survivor,
+    Callback = function(v) Config.ESP_Survivor = v end
 })
 
-Tabs.Visuals:CreateToggle({
+ESPSec:Toggle({
     Title = "Killers",
     Desc = "Show killers",
-    Value = Config.ESP_Killers,
-    Callback = function(v) Config.ESP_Killers = v end
+    Value = Config.ESP_Killer,
+    Callback = function(v) Config.ESP_Killer = v end
 })
     
-Tabs.Visuals:CreateSection("Objects")
+local ObjSec = Tabs.Visuals:Section({ Title = "Objects" })
 
-Tabs.Visuals:CreateToggle({
+ObjSec:Toggle({
     Title = "Generators",
-    Value = Config.ESP_Generators,
-    Callback = function(v) Config.ESP_Generators = v end
+    Value = Config.ESP_Generator,
+    Callback = function(v) Config.ESP_Generator = v end
 })
 
-Tabs.Visuals:CreateToggle({
-    Title = "Totems",
-    Value = Config.ESP_Totems,
-    Callback = function(v) Config.ESP_Totems = v end
+ObjSec:Toggle({
+    Title = "Hooks",
+    Value = Config.ESP_Hook,
+    Callback = function(v) Config.ESP_Hook = v end
 })
 
-Tabs.Visuals:CreateToggle({
-    Title = "Chests",
-    Value = Config.ESP_Chests,
-    Callback = function(v) Config.ESP_Chests = v end
+ObjSec:Toggle({
+    Title = "Pallets",
+    Value = Config.ESP_Pallet,
+    Callback = function(v) Config.ESP_Pallet = v end
 })
 
-Tabs.Visuals:CreateToggle({
-    Title = "Traps",
-    Value = Config.ESP_Traps,
-    Callback = function(v) Config.ESP_Traps = v end
-})
-
-Tabs.Visuals:CreateToggle({
-    Title = "Hatch",
-    Value = Config.ESP_Hatch,
-    Callback = function(v) Config.ESP_Hatch = v end
-})
-
-Tabs.Visuals:CreateToggle({
+ObjSec:Toggle({
     Title = "Exit Gates",
-    Value = Config.ESP_ExitBox,
-    Callback = function(v) Config.ESP_ExitBox = v end
+    Value = Config.ESP_Gate,
+    Callback = function(v) Config.ESP_Gate = v end
 })
 
 -- [[ Combat Tab ]]
-Tabs.Combat:CreateSection("Aimbot")
+local AimSec = Tabs.Combat:Section({ Title = "Aimbot" })
 
-Tabs.Combat:CreateToggle({
+AimSec:Toggle({
     Title = "Enable Aimbot",
     Value = Config.AIM_Enabled,
     Callback = function(v) Config.AIM_Enabled = v end
 })
 
-Tabs.Combat:CreateToggle({
-    Title = "Silent Aim",
-    Value = Config.AIM_Silent,
-    Callback = function(v) Config.AIM_Silent = v end
-})
-
-Tabs.Combat:CreateSection("Kill Aura")
-Tabs.Combat:CreateToggle({
+local AuraSec = Tabs.Combat:Section({ Title = "Kill Aura" })
+AuraSec:Toggle({
     Title = "Kill Aura",
-    Value = Config.AUTO_KillAura or false,
-    Callback = function(v) Config.AUTO_KillAura = v end
+    Value = Config.AUTO_Attack,
+    Callback = function(v) Config.AUTO_Attack = v end
 })
 
 -- [[ Movement Tab ]]
-Tabs.Movement:CreateSection("Speed Hack")
+local SpeedSec = Tabs.Movement:Section({ Title = "Speed Hack" })
 
-Tabs.Movement:CreateToggle({
+SpeedSec:Toggle({
     Title = "Speed Enabled",
     Value = Config.SPEED_Enabled,
     Callback = function(v) Config.SPEED_Enabled = v end
 })
 
-Tabs.Movement:CreateDropdown({
+SpeedSec:Dropdown({
     Title = "Method",
     Options = {"Attribute", "CFrame", "WalkSpeed"},
-    Value = Config.SPEED_Method or "Attribute",
+    Value = Config.SPEED_Method,
     Callback = function(v) Config.SPEED_Method = v end
 })
 
-Tabs.Movement:CreateSlider({
+SpeedSec:Slider({
     Title = "Speed Value",
     Min = 0, Max = 100,
     Value = Config.SPEED_Value,
     Callback = function(v) Config.SPEED_Value = v end
 })
 
-Tabs.Movement:CreateSection("Others")
+local OtherMoveSec = Tabs.Movement:Section({ Title = "Others" })
 
-Tabs.Movement:CreateToggle({
+OtherMoveSec:Toggle({
     Title = "Flight",
     Value = Config.FLY_Enabled,
     Callback = function(v) Config.FLY_Enabled = v end
 })
 
-Tabs.Movement:CreateToggle({
+OtherMoveSec:Toggle({
     Title = "Noclip",
     Value = Config.NOCLIP_Enabled,
     Callback = function(v) Config.NOCLIP_Enabled = v end
 })
 
 -- [[ Settings Tab ]]
-Tabs.Settings:CreateSection("UI Configuration")
+local UISec = Tabs.Settings:Section({ Title = "UI Configuration" })
 
-Tabs.Settings:CreateDropdown({
+UISec:Dropdown({
     Title = "Theme",
     Options = {"Dark", "Light", "Aqua"},
     Value = "Dark",
     Callback = function(v) Window:SetTheme(v) end
 })
 
-Tabs.Settings:CreateButton({
+UISec:Button({
     Title = "Copy Discord",
     Callback = function() 
         setclipboard("https://discord.gg/violence")
