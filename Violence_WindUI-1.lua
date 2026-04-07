@@ -1150,17 +1150,25 @@ end
 
 local function LeaveGenerator()
     local root = GetCharacterRoot()
-    if root then
-        local nearestGen, nearestDist = nil, math.huge
-        for _, gen in ipairs(Cache.Generators) do
-            local d = GetDistance(gen.part.Position)
-            if d < nearestDist then nearestDist = d; nearestGen = gen end
+    if not root then return false end
+
+    local _, killerPos = GetKillerDistance()
+    if not killerPos then return false end
+
+    local bestGen = nil
+    local maxDist = -1
+
+    for _, gen in ipairs(Cache.Generators) do
+        local distToKiller = (gen.part.Position - killerPos).Magnitude
+        if distToKiller > maxDist then
+            maxDist = distToKiller
+            bestGen = gen
         end
-        if nearestGen and nearestDist < Config.AUTO_LeaveDist then
-            local dir = (root.Position - nearestGen.part.Position).Unit
-            root.CFrame = CFrame.new(root.Position + dir * (Config.AUTO_LeaveDist + 10) + Vector3.new(0, Config.TP_Offset, 0))
-            return true
-        end
+    end
+
+    if bestGen then
+        root.CFrame = bestGen.part.CFrame * CFrame.new(0, Config.TP_Offset, 3)
+        return true
     end
     return false
 end
