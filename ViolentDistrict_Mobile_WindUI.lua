@@ -1781,7 +1781,7 @@ AutoGenHint.Visible = false
 -- WINDUI MENU
 -- ============================================================
 
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/source.lua"))()
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
 local Window = WindUI:CreateWindow({
     Title = "Violent District",
