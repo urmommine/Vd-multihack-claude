@@ -65,6 +65,8 @@ local Config = {
     RADAR_Pallet = true,
 
     AUTO_Generator = false,
+    AUTO_StopOnKiller = true,
+    AUTO_ReturnToGen = true,
     AUTO_GenMode = "Fast",
     AUTO_LeaveGen = false,
     AUTO_LeaveDist = 18,
@@ -210,6 +212,7 @@ local State = {
     OriginalSpeed = 16,  LastFogState = false,
     KillerTarget  = nil, LastBeatTP = 0,
     LastFinishPos = nil, BeatSurvivorDone = false,
+    LastGenPos = nil, IsEscaping = false,
 }
 
 local Cache = {
@@ -1145,6 +1148,23 @@ local function InfiniteLunge()
     root.Velocity=root.CFrame.LookVector*100+Vector3.new(0,10,0)
 end
 
+local function LeaveGenerator()
+    local root = GetCharacterRoot()
+    if root then
+        local nearestGen, nearestDist = nil, math.huge
+        for _, gen in ipairs(Cache.Generators) do
+            local d = GetDistance(gen.part.Position)
+            if d < nearestDist then nearestDist = d; nearestGen = gen end
+        end
+        if nearestGen and nearestDist < Config.AUTO_LeaveDist then
+            local dir = (root.Position - nearestGen.part.Position).Unit
+            root.CFrame = CFrame.new(root.Position + dir * (Config.AUTO_LeaveDist + 10) + Vector3.new(0, Config.TP_Offset, 0))
+            return true
+        end
+    end
+    return false
+end
+
 -- ─── ESP render loop ─────────────────────────────
 local function RenderESP()
     if not Config.ESP_Enabled then ESP.hideAll(); return end
@@ -1590,6 +1610,8 @@ SecGen:Button({ Title = "CANCEL REPAIR", Desc = "Stop and free movement (Mobile)
     Config.AUTO_Generator = false 
     Notif("Violence", "Auto Gen Cancelled!", 2)
 end })
+SecGen:Toggle({ Title = "Auto Stop on Killer", Desc = "Leave & Stop gen if killer < 40 studs", Value = Config.AUTO_StopOnKiller, Callback = function(v) Config.AUTO_StopOnKiller = v end })
+SecGen:Toggle({ Title = "Auto Return to Gen", Desc = "Return back when killer > 60 studs", Value = Config.AUTO_ReturnToGen, Callback = function(v) Config.AUTO_ReturnToGen = v end })
 SecGen:Dropdown({ Title="Gen Speed", Values={"Fast","Slow"}, Value=Config.AUTO_GenMode, Callback=function(v) Config.AUTO_GenMode=v end })
 SecGen:Slider({ Title="Leave Distance", Value={Min=10,Max=30,Default=Config.AUTO_LeaveDist}, Step=2, Callback=function(v) Config.AUTO_LeaveDist=v end })
 SecGen:Keybind({ Title="Leave Gen Key", Value=tostring(Config.KEY_LeaveGen):gsub("Enum.KeyCode.",""), Callback=function(v) pcall(function() Config.KEY_LeaveGen=Enum.KeyCode[v] end) end })
@@ -1720,15 +1742,7 @@ Connections.Input = UserInputService.InputBegan:Connect(function(input, gpe)
     if kc==Config.KEY_TP_Gate then TeleportToGate() end
     if kc==Config.KEY_TP_Hook then TeleportToHook() end
     if kc==Config.KEY_LeaveGen then
-        local root=GetCharacterRoot()
-        if root then
-            local nearestGen,nearestDist=nil,math.huge
-            for _,gen in ipairs(Cache.Generators) do local d=GetDistance(gen.part.Position); if d<nearestDist then nearestDist=d;nearestGen=gen end end
-            if nearestGen and nearestDist<Config.AUTO_LeaveDist then
-                local dir=(root.Position-nearestGen.part.Position).Unit
-                root.CFrame=CFrame.new(root.Position+dir*(Config.AUTO_LeaveDist+10)+Vector3.new(0,Config.TP_Offset,0))
-            end
-        end
+        LeaveGenerator()
     end
     if kc==Config.KEY_StopGen then Config.AUTO_Generator=false; Notif("Violence","Auto Gen stopped",2) end
     if kc==Config.KEY_Speed then Config.SPEED_Enabled=not Config.SPEED_Enabled end
@@ -1832,9 +1846,32 @@ task.spawn(function()
                 if d then killerDist = d end
             end)
 
-            if isMoving or killerDist < 40 then
+            if (isMoving or killerDist < 40) and not State.IsEscaping then
                 stopRepairing()
+                if Config.AUTO_StopOnKiller and killerDist < 40 then
+                    local root = GetCharacterRoot()
+                    if root then
+                        State.LastGenPos = root.CFrame
+                        local escaped = LeaveGenerator()
+                        if escaped then
+                            State.IsEscaping = true
+                            Config.AUTO_Generator = false
+                            Notif("Violence", "Killer near! Auto Gen stopped.", 3)
+                        end
+                    end
+                end
                 task.wait(0.2)
+            elseif State.IsEscaping then
+                if killerDist > 60 and Config.AUTO_ReturnToGen then
+                    local root = GetCharacterRoot()
+                    if root and State.LastGenPos then
+                        root.CFrame = State.LastGenPos
+                        State.IsEscaping = false
+                        Config.AUTO_Generator = true
+                        Notif("Violence", "Safe! Returned to Generator.", 3)
+                    end
+                end
+                task.wait(0.5)
             else
                 -- Normal Repair Logic
                 if not repairRemote then
